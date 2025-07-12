@@ -3,6 +3,7 @@ require("dotenv").config();
 const app = express();
 const path = require("path");
 const userModel = require("./models/user.model.js");
+const postModel = require("./models/post.model.js");
 const CookieParser = require("cookie-parser");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -22,8 +23,9 @@ app.get("/login", (req, res) => {
   res.render("login");
 });
 
-app.get("/profile", isLoggedin, (req, res) => {
-  res.render("profile");
+app.get("/profile", isLoggedin, async (req, res) => {
+  let user = await userModel.findById(req.user.userId).populate("posts");
+  res.render("profile", { user });
 });
 app.post("/register", async (req, res) => {
   const { email, password, username, name, age } = req.body;
@@ -42,7 +44,7 @@ app.post("/register", async (req, res) => {
     name,
     age,
   });
-  const token = jwt.sign({ userId: user._id }, "shhhh");
+  const token = jwt.sign({ userId: user._id, email: user.email }, "shhhh");
   res.cookie("token", token, { httpOnly: true });
 
   res.send("User created");
@@ -53,11 +55,24 @@ app.post("/login", async (req, res) => {
   const user = await userModel.findOne({ email });
   if (!user) return res.status(500).send("something went wrong");
   bcrypt.compare(password, user.password, function (err, result) {
-    const token = jwt.sign({ userId: user._id }, "shhhh");
+    const token = jwt.sign({ userId: user._id, email: user.email }, "shhhh");
     res.cookie("token", token, { httpOnly: true });
     if (result) res.status(200).redirect("/profile");
     else res.redirect("/login");
   });
+});
+
+app.post("/post", isLoggedin, async (req, res) => {
+  let user = await userModel.findById(req.user.userId);
+  let { content } = req.body;
+  let post = await postModel.create({
+    user: user._id,
+    content: content,
+  });
+
+  user.posts.push(post._id);
+  await user.save();
+  res.redirect("/profile");
 });
 
 app.get("/logout", async (req, res) => {
@@ -66,13 +81,14 @@ app.get("/logout", async (req, res) => {
 });
 
 function isLoggedin(req, res, next) {
-  if (req.cookies.token === "") res.send("you must be logged in");
+  if (req.cookies.token === "") res.render("login");
   else {
-    let data = jwt.verify(req.cookies.token, "shhhh");
+    const data = jwt.verify(req.cookies.token, "shhhh");
     req.user = data;
+    next();
   }
-  next();
 }
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
