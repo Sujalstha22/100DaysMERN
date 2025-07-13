@@ -71,9 +71,10 @@
       <div class="text-right text-sm text-gray-400">
         <%post.date%>
       </div>
+      <small class="text-left "><%= post.likes.length%> likes</small>
       <div class="btns flex gap-4 mt-2">
-        <a class="text-blue-600" href="#">Like</a>
-        <a class="text-zinc-400" href="#">Edit</a>
+        <a class="text-blue-600" href="/like/<%= post._id%>"><%= post.likes.indexOf(user._id)===-1?"like":"unlike"%></a>
+        <a class="text-zinc-400" href="/edit/<%=post._id%>">Edit</a>
       </div>
     </div>
   <% }) %>
