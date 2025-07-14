@@ -56,11 +56,10 @@ app.post("/update/:id", isLoggedin, async (req, res) => {
   );
   res.redirect("/profile");
 });
-app.post("/register", async (req, res) => {
+app.post("/register", upload.single("image"), async (req, res) => {
   const { email, password, username, name, age } = req.body;
 
   const existingUser = await userModel.findOne({ email });
-
   if (existingUser) return res.status(400).send("User already exists");
 
   const salt = await bcrypt.genSalt(10);
@@ -72,7 +71,9 @@ app.post("/register", async (req, res) => {
     username,
     name,
     age,
+    profilePic: req.file ? req.file.filename : null,
   });
+
   const token = jwt.sign({ userId: user._id, email: user.email }, "shhhh");
   res.cookie("token", token, { httpOnly: true });
 
